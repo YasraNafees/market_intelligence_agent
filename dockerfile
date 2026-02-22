@@ -1,20 +1,21 @@
-# 1. Base Image: Humne Python 3.10 mangi (Halka version)
 FROM python:3.10-slim
 
-# 2. Work Directory: Container ke andar 'app' ka folder banaya
 WORKDIR /app
 
-# 3. Copy Requirements: Pehle list copy ki taake installation fast ho
-COPY requirements.txt .
+# Install system dependencies for 4GB RAM efficiency
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
 
-# 4. Install Libraries: Sari libraries box mein dal di
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy Everything: Ab apna 'engin.py' aur 'app_ui.py' andar dala
 COPY . .
 
-# 6. Port: Streamlit hamesha 8501 par chalta hai
+# Railway uses a dynamic PORT, so we must use the variable
 EXPOSE 8501
 
-# 7. Start Command: Jab Render box kholay to ye command chale
-CMD ["streamlit", "run", "app_ui.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# The professional way to run Streamlit on Cloud
+CMD ["streamlit", "run", "app_ui.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
