@@ -47,14 +47,13 @@ Thought: {agent_scratchpad}"""
 prompt = PromptTemplate.from_template(template)
 
 # 4. Create the Agent & Executor
-# Ab ye error nahi dega kyunke prompt mein variables poore hain
 agent = create_react_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(
     agent=agent, 
     tools=tools, 
     verbose=True, 
     handle_parsing_errors=True,
-     max_iterations=3,           # <--- Ye safety lock hai (API bachane ke liye)
+     max_iterations=3,           
     early_stopping_method="force"
 )
 

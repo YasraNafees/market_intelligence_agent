@@ -15,7 +15,7 @@ def research(query: str = Query(..., description="Query to research")):
     Usage: http://127.0.0.1 AI projects
     """
     try:
-        # Agent ko query bhej rahe hain
+        # send the agent query
         response = agent_executor.invoke({"input": query})
         return {
             "input": query,
