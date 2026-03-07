@@ -17,7 +17,7 @@ A professional AI Agent built with **Python 3.10.11**, designed to solve real-wo
 - **Observability:** [LangSmith](https://smith.langchain.com)
 
 ## 🚀 How to Run Locally
-1. Clone the repo: `git clone https://github.com`
+1. Clone the repo: `https://github.com/YasraNafees/market_intelligence_agent.git`
 2. Create `.env` and add your API Keys (`GROQ`, `TAVILY`, `LANGCHAIN`).
 3. Install requirements: `pip install -r requirements.txt`
 4. Run Streamlit UI: `streamlit run app_ui.py`
