@@ -1,68 +1,109 @@
 import os
+import asyncio
+from langchain.memory import ConversationTokenBufferMemory
+from typing import List
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+
 from langchain_groq import ChatGroq
 from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_core.prompts import PromptTemplate # ReAct ke liye PromptTemplate behtar hai
+from langchain_core.prompts import PromptTemplate
 from langchain.agents import create_react_agent, AgentExecutor
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
 
 load_dotenv()
 
-# 1. The Brain: Groq
+# 1. Model Setup (Stable version)
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     groq_api_key=os.getenv("GROQ_API_KEY"),
     temperature=0
 )
 
-# 2. The Tools: Tavily
-search_tool = TavilySearchResults(k=3)
+# 2. Tools & Schema
+# k=3 zaroori hai taake multiple sources se info mile
+search_tool = TavilySearchResults(k=3, include_raw_content=False)
 tools = [search_tool]
 
-# 3. Professional ReAct Prompt (Standard Industry Template)
-# NOTE: {tools} and {tool_names} are REQUIRED for ReAct agents
-template = """Answer the following questions as best you can. You have access to the following tools:
+class BIReport(BaseModel):
+    company_name: str = Field(description="Name of the company")
+    latest_project: List[str] = Field(description="List of AI initiatives")
+    hiring_trends: str = Field(description="Summary of hiring")
+    strategic_advice: str = Field(description="Markdown formatted advice")
 
+base_parser = PydanticOutputParser(pydantic_object=BIReport)
+fixing_parser = OutputFixingParser.from_llm(parser=base_parser, llm=llm)
+format_instruction = base_parser.get_format_instructions()
+
+# Memory: Token-based management for stability
+memory = ConversationTokenBufferMemory(llm=llm, max_token_limit=2000, memory_key="chat_history")
+
+# --- 3. Optimized Prompt for History Preservation ---
+template = """You are a Senior Business Intelligence Analyst. 
+Your goal is to build a COMPREHENSIVE report by combining new research with existing data from the chat history.
+
+STRICT RULES:
+1. CHECK CHAT HISTORY: Before searching, review the {chat_history}. If data already exists, DO NOT delete it.
+2. MERGE DATA: When providing the Final Answer, combine newly found facts with the information already present in the history.
+3. NO HALLUCINATION: Use only real data from tools. Never use dummy names like 'ABC Corp'.
+4. PERSISTENCE: Ensure the 'latest_project' list grows as new projects are discovered across multiple turns.
+
+TOOLS:
 {tools}
 
-Use the following format:
+FORMAT:
+Thought: I should check history first, then search for new details.
+Action: {tool_names}
+Action Input: "latest AI projects and hiring trends for [Company]"
+Observation: [Tool Output]
+...
+Thought: I will now merge the history and new findings into the final JSON.
+Final Answer: 
+{format_instruction}
 
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-Business Intelligence Persona: 
-You are a Professional Business Intelligence Agent. Your goal is to solve the 'Time-to-Insight' problem.
-Identify latest AI projects, hiring trends, and provide strategic recommendations in Markdown.
+CHAT HISTORY SO FAR:
+{chat_history}
 
 Question: {input}
 Thought: {agent_scratchpad}"""
 
-prompt = PromptTemplate.from_template(template)
+prompt = PromptTemplate(
+    template=template,
+    input_variables=["input", "agent_scratchpad", "tools", "tool_names", "chat_history"],
+    partial_variables={"format_instruction": format_instruction}
+)
 
-# 4. Create the Agent & Executor
+# 4. Agent Configuration
 agent = create_react_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(
-    agent=agent, 
-    tools=tools, 
-    verbose=True, 
-    handle_parsing_errors=True,
-     max_iterations=3,           
+    agent=agent,
+    tools=tools,
+    memory=memory,
+    verbose=True,
+    handle_parsing_errors="ERROR: Return ONLY a valid JSON object matching the schema.",
+    max_iterations=8, # Barha diya taake merging ke liye time mile
     early_stopping_method="force"
 )
 
-def run_research(query: str):
-    return agent_executor.invoke({"input": query})
+async def run_research(query: str):
+    print("Waiting for Rate Limit (30s)...")
+    await asyncio.sleep(30) 
+    
+    response = await agent_executor.ainvoke({"input": query})
+    
+    raw_output = response["output"]
+    # Clean possible 'Final Answer:' prefix
+    if "Final Answer:" in raw_output:
+        raw_output = raw_output.split("Final Answer:")[-1].strip()
+    
+    try:
+        return fixing_parser.parse(raw_output)
+    except Exception as e:
+        print(f"Parsing failed: {e}")
+        return raw_output
 
 if __name__ == "__main__":
     test_query = "Research the latest AI initiatives of 10Pearls and their hiring trends."
-    print("\n--- Starting Research ---\n")
-    response = run_research(test_query)
-    print("\n--- FINAL BUSINESS REPORT ---\n")
-    print(response["output"])
+    result = asyncio.run(run_research(test_query))
+    print("\n--- FINAL CLEAN REPORT ---\n")
+    print(result)
