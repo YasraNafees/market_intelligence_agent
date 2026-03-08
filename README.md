@@ -13,7 +13,7 @@ A professional AI Agent built with **Python 3.10.11**, designed to solve real-wo
 - **Framework:** [LangChain](https://python.langchain.com)
 - **LLM Engine:** [Groq Cloud](https://console.groq.com)
 - **Search Tool:** [Tavily AI](https://tavily.com)
-- **API/UI:** [Streamlit](https://streamlit.io)
+- **API/UI:** [FastAPI](https://fastapi.tiangolo.com) & [Streamlit](https://streamlit.io)
 - **Observability:** [LangSmith](https://smith.langchain.com)
 
 ## 🚀 How to Run Locally

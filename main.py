@@ -31,16 +31,13 @@ async def home():
 @app.get("/research", response_model=BIResponse, tags=["Agent"])
 async def research(query: str = Query(..., description="Query to research")):
     try:
-        # 1. Agent ko call karna (Await is necessary)
         result = await run_research(query) 
         
-        # 2. Data Validation Logic (Properly Indented inside try)
         if result and hasattr(result, "dict"):
             report_data = result.dict()
         elif isinstance(result, dict):
             report_data = result
         else:
-            # Agar format sahi nahi mila toh null bhej dein bajaye crash karne ke
             return BIResponse(
                 status="Partial Success", 
                 query=query,
