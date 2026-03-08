@@ -21,7 +21,6 @@ llm = ChatGroq(
 )
 
 # 2. Tools & Schema
-# k=3 zaroori hai taake multiple sources se info mile
 search_tool = TavilySearchResults(k=3, include_raw_content=False)
 tools = [search_tool]
 
@@ -81,7 +80,7 @@ agent_executor = AgentExecutor(
     memory=memory,
     verbose=True,
     handle_parsing_errors="ERROR: Return ONLY a valid JSON object matching the schema.",
-    max_iterations=8, # Barha diya taake merging ke liye time mile
+    max_iterations=8, 
     early_stopping_method="force"
 )
 
