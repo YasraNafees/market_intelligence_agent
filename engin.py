@@ -21,7 +21,7 @@ llm = ChatGroq(
 )
 
 # 2. Tools & Schema
-search_tool = TavilySearchResults(k=3, include_raw_content=False)
+search_tool = TavilySearchResults(k=5, include_raw_content=False)
 tools = [search_tool]
 
 class BIReport(BaseModel):
